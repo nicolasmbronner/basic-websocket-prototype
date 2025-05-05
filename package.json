@@ -1,0 +1,21 @@
+{
+  "name": "basic-websocket-prototype",
+  "version": "1.0.0",
+  "description": "A simple websocket prototype that monitors users connected / disconnected as an ordered list. When no more users connected, the list resets.",
+  "main": "server/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon server/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "websocket",
+    "express",
+    "demo"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
