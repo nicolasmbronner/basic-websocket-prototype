@@ -1,49 +1,10 @@
-# Documentation Technique - Projet WebSocket
+# Documentation Technique - Détails d'implémentation
 
-## Architecture du projet
+Cette documentation technique complète le [README.md](../README.md) en fournissant des détails d'implémentation pour les développeurs.
 
-Ce projet utilise une architecture client-serveur avec communication bidirectionnelle en temps réel via WebSocket.
+## Détails d'architecture
 
-### Structure des fichiers
-
-```
-websocket-demo/
-├── node_modules/
-├── public/
-│   ├── css/
-│   │   └── style.css       # Styles CSS pour l'interface utilisateur
-│   ├── js/
-│   │   └── client.js       # Client WebSocket et logique frontend
-│   └── index.html          # Page HTML principale
-├── server/
-│   └── index.js            # Serveur Express et gestionnaire WebSocket
-├── docs/
-│   └── technical.md        # Cette documentation
-├── .gitignore              # Fichiers ignorés par Git
-└── package.json            # Configuration du projet
-```
-
-## Diagrammes
-
-### Diagramme d'architecture
-
-```mermaid
-graph TD
-    A[Client Navigateur] <-->|WebSocket| B[Serveur Socket.io]
-    B -->|Intégré à| C[Serveur Express]
-    C -->|Sert| D[Fichiers Statiques]
-    D -->|Chargés par| A
-    
-    classDef browser fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef server fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef files fill:#bfb,stroke:#333,stroke-width:2px;
-    
-    class A browser;
-    class B,C server;
-    class D files;
-```
-
-### Diagramme de séquence pour la connexion WebSocket
+### Diagramme de séquence détaillé
 
 ```mermaid
 sequenceDiagram
@@ -68,36 +29,146 @@ sequenceDiagram
     Note over S: Log "Client déconnecté"
 ```
 
-## Étapes implémentées
+## Flux de données détaillé
 
-### 1. Structure initiale
+### Côté serveur (server/index.js)
 
-- [x] Configuration du serveur Express
-- [x] Structure des dossiers et fichiers de base
-- [x] Page HTML minimale
+Le serveur utilise Socket.io intégré à Express pour gérer les connexions WebSocket :
 
-**Détails techniques:**
-- Utilisation des ES modules (type: "module" dans package.json)
-- Configuration des fichiers statiques avec `app.use(express.static("public"))`
-- Utilisation de la méthode `res.sendFile('index.html', { root: 'public' })` pour servir l'index
+```javascript
+/**
+ * Initialisation de Socket.io
+ * 
+ * ← Reçoit données de: Serveur HTTP Express
+ * → Envoie données vers: Clients WebSocket
+ */
+const io = new Server(server);
 
-### 2. WebSocket basique
+/**
+ * Gestion des connexions WebSocket
+ * 
+ * ← Reçoit données de: Client WebSocket (navigateur)
+ */
+io.on('connection', (socket) => {
+  console.log('Nouvelle connexion WebSocket établie');
+  
+  /**
+   * Gestion des déconnexions
+   * 
+   * ← Reçoit données de: Client WebSocket (navigateur)
+   */
+  socket.on('disconnect', () => {
+    console.log('Client déconnecté');
+  });
+});
+```
 
-- [x] Intégration de Socket.io au serveur Express
-- [x] Configuration du client WebSocket
-- [x] Gestion des événements de connexion/déconnexion
-- [x] Indicateur visuel de l'état de connexion
+### Côté client (public/js/client.js)
 
-**Détails techniques:**
-- Socket.io est intégré au serveur HTTP créé avec Express
-- Le client Socket.io est automatiquement servi via `/socket.io/socket.io.js`
-- Les événements `connect` et `disconnect` sont utilisés pour suivre l'état de la connexion
+Le client se connecte au serveur et gère les états de connexion :
 
-## Prochaines étapes
+```javascript
+/**
+ * Connexion au serveur WebSocket
+ * 
+ * → Envoie données vers: Serveur Socket.io
+ */
+const socket = io();
 
-- [ ] Compteur d'utilisateurs - Suivi et affichage du nombre d'utilisateurs connectés
-- [ ] Système d'IDs - Attribution d'IDs auto-incrémentés aux utilisateurs
-- [ ] Listing d'utilisateurs - Affichage de la liste des utilisateurs connectés
-- [ ] Compte à rebours - Implémentation du système de réinitialisation après déconnexion
-- [ ] Amélioration UI - Soigner l'interface utilisateur
-- [ ] Documentation finale - Finaliser la documentation complète
+/**
+ * Gestion de l'événement de connexion
+ * 
+ * ← Reçoit données de: Serveur Socket.io
+ * → Modifie: DOM (interface utilisateur)
+ */
+socket.on('connect', () => {
+    console.log('Connecté au serveur WebSocket');
+    statusElement.textContent = 'Connecté';
+    statusElement.className = 'connected';
+});
+
+/**
+ * Gestion de l'événement de déconnexion
+ * 
+ * ← Reçoit données de: Serveur Socket.io
+ * → Modifie: DOM (interface utilisateur)
+ */
+socket.on('disconnect', () => {
+    console.log('Déconnecté du serveur WebSocket');
+    statusElement.textContent = 'Déconnecté';
+    statusElement.className = 'disconnected';
+});
+```
+
+## Notes d'implémentation
+
+### Configuration ES Modules
+
+Ce projet utilise les ES Modules natifs de Node.js plutôt que CommonJS :
+
+```json
+{
+  "type": "module"
+}
+```
+
+Cela permet d'utiliser la syntaxe d'import/export moderne, mais nécessite des ajustements pour certaines fonctionnalités comme `__dirname` qui n'existent pas nativement en ES Modules.
+
+### Servir les fichiers statiques
+
+La méthode utilisée pour servir l'index.html :
+
+```javascript
+res.sendFile('index.html', { root: 'public' });
+```
+
+Cette approche est plus élégante que l'utilisation de chemins absolus avec `__dirname` car :
+- Elle simplifie le code
+- Elle est compatible avec les ES Modules
+- Elle conserve la sécurité (contrôle des traversées de répertoire)
+
+### Connectivité WebSocket
+
+Socket.io offre plusieurs avantages par rapport à l'API WebSocket native :
+- Reconnexion automatique en cas de perte de connexion
+- Fallback vers d'autres protocoles si WebSocket n'est pas disponible
+- API d'événements simple à utiliser
+
+## Détails d'implémentation par étape
+
+### Étape 1 : Structure initiale
+
+- Utilisation d'Express pour le serveur HTTP
+- Configuration des fichiers statiques
+- Structure de base du projet
+
+### Étape 2 : WebSocket basique
+
+- Intégration de Socket.io au serveur Express
+- Gestion des événements de connexion/déconnexion
+- Interface utilisateur réactive aux changements d'état
+
+### Prochaines implémentations
+
+#### Compteur d'utilisateurs
+
+Nous allons créer un mécanisme pour :
+- Suivre le nombre d'utilisateurs connectés
+- Stocker les données de manière centralisée
+- Diffuser les mises à jour à tous les clients
+
+#### Format des données
+
+Nous utiliserons la structure suivante pour stocker les informations utilisateur :
+
+```javascript
+// Structure d'un utilisateur
+{
+  id: 1,                         // ID auto-incrémenté
+  socketId: "abc123",            // Identifiant technique Socket.io
+  connectionTime: "2025-05-05T12:34:56"  // Date/heure de connexion
+}
+
+// Collection d'utilisateurs actifs
+const activeUsers = [];
+```
