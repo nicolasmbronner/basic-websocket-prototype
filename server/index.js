@@ -2,29 +2,47 @@
  * index.js - Point d'entrée du serveur
  * 
  * Ce fichier est responsable de:
- * - Configuration du serveur Express de base
- * - Servir la page HTML principale
+ * - Configuration du serveur Express
+ * - Intégration de Socket.io pour WebSocket
+ * - Gestion des connexions WebSocket de base
  * 
  * Créé le: 05/05/2025
  */
 
 import express from 'express';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
-// Récupération du chemin du fichier actuel (nécessaire en ES modules)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// initialisation d'Express
+// initialisation d'Express et du serveur HTTP
 const app = express();
+const server = createServer(app);
+/**
+ * Initialisation de Socket.io
+ * 
+ * ← Reçoit données de: Serveur HTTP Express
+ * → Envoie données vers: Clients WebSocket
+ */
+const io = new Server(server);
 
 // Configuration des fichiers statiques
-app.use(express.static(join(__dirname, '../public')));
+app.use(express.static("public"));
+
+/**
+ * Gestion des connexions WebSocket
+ * 
+ * ← Reçoit données de: Clients WebSocket (navigateur)
+ */
+io.on('connection', (socket) => {
+    console.log('Nouvelle connexion WebSocket établie');
+
+    socket.on('disconnect', () => {
+        console.log('Client déconnecté');
+    })
+});
 
 // Route principale
 app.get('/', (req, res) => {
-    res.sendFile(join(__dirname, '../public/index.html'));
+    res.sendFile('index.html', { root: 'public' });
 });
 
 // Démarrage du serveur
