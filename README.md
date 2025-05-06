@@ -1,2 +1,74 @@
-# basic-websocket-prototype
-A simple websocket prototype that monitors users connected / disconnected as an ordered list. When no more users connected, the list resets.
+# Prototype WebSocket Temps-Réel
+
+Un prototype WebSocket simple mais complet qui implémente un suivi de connexions utilisateur en temps réel avec fonctionnalités avancées.
+
+## 📋 Fonctionnalités
+
+- Affichage du nombre d'utilisateurs connectés en temps réel
+- Listing des utilisateurs connectés avec IDs auto-incrémentés
+- Système de réinitialisation automatique après 20 secondes sans connexions
+- Interface utilisateur intuitive
+
+## 🔍 Aperçu de l'architecture
+
+```mermaid
+graph TD
+    A[Client Navigateur] <-->|WebSocket| B[Serveur Socket.io]
+    B -->|Intégré à| C[Serveur Express]
+    C -->|Sert| D[Fichiers Statiques]
+    D -->|Chargés par| A
+```
+
+## 🛠️ Technologies utilisées
+
+- **Backend**: Node.js, Express, Socket.io
+- **Frontend**: HTML, CSS, JavaScript (vanilla)
+- **Documentation**: Markdown, diagrammes Mermaid
+
+## 🚀 Installation et démarrage
+
+```bash
+# Cloner le projet
+git clone https://github.com/username/websocket-demo.git
+cd websocket-demo
+
+# Installer les dépendances
+npm install
+
+# Démarrer le serveur
+node server/index.js
+```
+
+Ouvrez ensuite votre navigateur sur `http://localhost:3000`
+
+## 📂 Structure du projet
+
+```
+websocket-demo/
+├── public/
+│   ├── css/           # Styles de l'interface
+│   │   └── style.css
+│   ├── js/            # JavaScript client
+│   │   └── client.js
+│   └── index.html     # Interface utilisateur
+├── server/
+│   └── index.js       # Serveur Express + WebSocket
+├── docs/
+│   └── technical.md   # Documentation technique détaillée
+└── package.json       # Configuration du projet
+```
+
+## ✅ Étapes d'implémentation
+
+- [x] Structure initiale - Serveur Express et fichiers de base
+- [x] WebSocket basique - Communication bidirectionnelle client-serveur
+- [ ] Compteur d'utilisateurs - Suivi et affichage des connexions
+- [ ] Système d'IDs - Attribution d'identifiants uniques
+- [ ] Listing d'utilisateurs - Affichage des utilisateurs connectés
+- [ ] Compte à rebours - Réinitialisation après déconnexion
+- [ ] Amélioration UI - Interface utilisateur soignée
+- [ ] Documentation finale - Finalisation de la documentation
+
+## 📚 Documentation technique
+
+Pour plus de détails techniques sur l'implémentation, consultez [la documentation technique](docs/technical.md).
