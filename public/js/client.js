@@ -20,12 +20,13 @@ const socket = io();
 
 // Référence aux éléments DOM
 const statusElement = document.getElementById('status');
+const userCountElement = document.getElementById('user-count');
 
 /**
- * Gestion de l'événement de connexion
+ * Gestion des événements webSocket
  * 
- * ← Reçoit données de: Serveur Socket.io
- * → Modifie: DOM (UI)
+ * ← Reçoivent données de: Serveur Socket.io
+ * → Modifient: DOM (UI)
  */
 socket.on('connect', () => {
     console.log('Connecté au serveur Websocket');
@@ -35,16 +36,22 @@ socket.on('connect', () => {
     }
 });
 
-/**
- * Gestion de l'événement de connexion
- * 
- * ← Reçoit données de: Serveur Socket.io
- * → Modifie: DOM (UI)
- */
 socket.on('disconnect', () => {
     console.log('Déconnecté du serveur Websocket');
     if (statusElement) {
         statusElement.textContent = 'Déconnecté';
         statusElement.className = 'disconnected';
     }
-})
+});
+
+/**
+ * Réception de la mise à jour du compteur d'utilisateurs
+ * 
+ * ← Reçoit données de: Serveur WebSocket (événement 'userCount')
+ * → Modifie: DOM (élément #user-count))
+ */
+
+socket.on('userCount', (count) => {
+    console.log(`Mise à jour du compteur: ${count} utilisateur(s) connecté(s)`);
+    userCountElement.textContent = count.toString();
+});

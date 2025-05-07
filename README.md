@@ -4,10 +4,10 @@ Un prototype WebSocket simple mais complet qui implémente un suivi de connexion
 
 ## 📋 Fonctionnalités
 
-- Affichage du nombre d'utilisateurs connectés en temps réel
-- Listing des utilisateurs connectés avec IDs auto-incrémentés
-- Système de réinitialisation automatique après 20 secondes sans connexions
-- Interface utilisateur intuitive
+- ✅ Affichage du nombre d'utilisateurs connectés en temps réel
+- ⏳ Listing des utilisateurs connectés avec IDs auto-incrémentés
+- ⏳ Système de réinitialisation automatique après 20 secondes sans connexions
+- ⏳ Interface utilisateur intuitive
 
 ## 🔍 Aperçu de l'architecture
 
@@ -17,6 +17,9 @@ graph TD
     B -->|Intégré à| C[Serveur Express]
     C -->|Sert| D[Fichiers Statiques]
     D -->|Chargés par| A
+    
+    E[Compteur Utilisateurs] <-->|Modifié par| B
+    E -->|Affiché sur| A
 ```
 
 ## 🛠️ Technologies utilisées
@@ -41,6 +44,11 @@ node server/index.js
 
 Ouvrez ensuite votre navigateur sur `http://localhost:3000`
 
+Pour tester le compteur d'utilisateurs:
+1. Ouvrez la page dans un premier onglet
+2. Ouvrez la page dans un deuxième onglet - le compteur devrait passer à 2
+3. Fermez un des onglets - le compteur devrait revenir à 1
+
 ## 📂 Structure du projet
 
 ```
@@ -62,7 +70,7 @@ websocket-demo/
 
 - [x] Structure initiale - Serveur Express et fichiers de base
 - [x] WebSocket basique - Communication bidirectionnelle client-serveur
-- [ ] Compteur d'utilisateurs - Suivi et affichage des connexions
+- [x] Compteur d'utilisateurs - Suivi et affichage des connexions
 - [ ] Système d'IDs - Attribution d'identifiants uniques
 - [ ] Listing d'utilisateurs - Affichage des utilisateurs connectés
 - [ ] Compte à rebours - Réinitialisation après déconnexion

@@ -4,7 +4,7 @@
  * Ce fichier est responsable de:
  * - Configuration du serveur Express
  * - Intégration de Socket.io pour WebSocket
- * - Gestion des connexions WebSocket de base
+ * - Gestion des connexions WebSocket et compteur d'utilisateurs
  * 
  * Créé le: 05/05/2025
  */
@@ -16,6 +16,7 @@ import { Server } from 'socket.io';
 // initialisation d'Express et du serveur HTTP
 const app = express();
 const server = createServer(app);
+
 /**
  * Initialisation de Socket.io
  * 
@@ -27,6 +28,9 @@ const io = new Server(server);
 // Configuration des fichiers statiques
 app.use(express.static("public"));
 
+// Variable pour suivre le nombre d'utilisateurs connectés
+let connectedUsers = 0;
+
 /**
  * Gestion des connexions WebSocket
  * 
@@ -35,8 +39,23 @@ app.use(express.static("public"));
 io.on('connection', (socket) => {
     console.log('Nouvelle connexion WebSocket établie');
 
+    // Incrémentation du compteur d'utilisateurs
+    connectedUsers++;
+    console.log(`Nombre d'utilisateurs connectés: ${connectedUsers}`);
+    
+    // Envoi du compteur à tous les clients (y compris le nouveau)
+    io.emit('userCount', connectedUsers);
+
+    // Déconnexion
     socket.on('disconnect', () => {
         console.log('Client déconnecté');
+
+        // Décrémentation du compteur d'utilisateurs
+        connectedUsers--;
+        console.log(`Nombre d'utilisateurs connectés: ${connectedUsers}`);
+
+        // Envoi du compteur mis à jour à tous les clients restants
+        io.emit('userCount', connectedUsers);
     })
 });
 
