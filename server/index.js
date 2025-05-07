@@ -66,6 +66,6 @@ app.get('/', (req, res) => {
 
 // Démarrage du serveur
 const PORT = 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Serveur démarré sur le port ${PORT}`);
 });

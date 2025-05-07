@@ -53,5 +53,7 @@ socket.on('disconnect', () => {
 
 socket.on('userCount', (count) => {
     console.log(`Mise à jour du compteur: ${count} utilisateur(s) connecté(s)`);
-    userCountElement.textContent = count.toString();
+    if (userCountElement) {
+        userCountElement.textContent = count.toString();
+    }
 });
