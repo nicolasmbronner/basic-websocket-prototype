@@ -57,6 +57,20 @@ h2 {
     color: #4a90e2;
 }
 
+#user-info {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #f0f7ee;
+    border-radius: 4px;
+    border-left: 4px solid #5cb85c;
+}
+
+#user-id {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #5cb85c;
+}
+
 .footer {
     margin-top: 30px;
     text-align: center;
