@@ -6,6 +6,7 @@ Un prototype WebSocket simple mais complet qui implémente un suivi de connexion
 
 - ✅ Affichage du nombre d'utilisateurs connectés en temps réel
 - ✅ Listing des utilisateurs connectés avec IDs auto-incrémentés
+- ✅ Affichage de la liste des utilisateurs avec leurs heures de connexion
 - ⏳ Système de réinitialisation automatique après 20 secondes sans connexions
 - ⏳ Interface utilisateur intuitive
 
@@ -24,6 +25,10 @@ graph TD
     F[Système d'IDs] -->|Gère| G[Liste Utilisateurs]
     B -->|Attribue IDs via| F
     F -->|Envoie ID| A
+    
+    H[Tableau activeUsers] -->|Source pour| I[Diffusion Liste]
+    I -->|Reçu par| A
+    A -->|Affiche| J[Liste Utilisateurs UI]
 ```
 
 ## 🛠️ Technologies utilisées
@@ -48,10 +53,11 @@ node server/index.js
 
 Ouvrez ensuite votre navigateur sur `http://localhost:3000`
 
-Pour tester le compteur d'utilisateurs et le système d'IDs:
+Pour tester les fonctionnalités en temps réel:
 1. Ouvrez la page dans un premier onglet - vous aurez l'ID #1
-2. Ouvrez un deuxième onglet - vous aurez l'ID #2 et le compteur passera à 2
-3. Fermez un des onglets - le compteur revient à 1
+2. Ouvrez un deuxième onglet - vous aurez l'ID #2 et verrez les deux utilisateurs dans la liste
+3. Ouvrez un troisième onglet - vous verrez les trois utilisateurs dans la liste
+4. Fermez un des onglets - il disparaîtra instantanément de toutes les listes
 
 ## 📂 Structure du projet
 
@@ -76,7 +82,7 @@ websocket-demo/
 - [x] WebSocket basique - Communication bidirectionnelle client-serveur
 - [x] Compteur d'utilisateurs - Suivi et affichage des connexions
 - [x] Système d'IDs - Attribution d'identifiants uniques
-- [ ] Listing d'utilisateurs - Affichage de la liste des utilisateurs connectés
+- [x] Listing d'utilisateurs - Affichage de la liste des utilisateurs connectés
 - [ ] Compte à rebours - Réinitialisation après déconnexion
 - [ ] Amélioration UI - Interface utilisateur soignée
 - [ ] Documentation finale - Finalisation de la documentation

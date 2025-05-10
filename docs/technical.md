@@ -22,11 +22,14 @@ sequenceDiagram
     S->>C: Accepte la connexion
     Note over S: Attribue ID utilisateur
     Note over S: Incrémente compteur d'utilisateurs
+    Note over S: Ajoute utilisateur à la liste
     S->>C: Envoi de l'ID attribué (userId)
     S->>C: Envoi du nombre d'utilisateurs (userCount)
+    S->>Tous: Diffuse la liste des utilisateurs (userList)
     Note over C: Affiche "Connecté" (vert)
     Note over C: Affiche l'ID utilisateur
     Note over C: Met à jour le compteur d'utilisateurs
+    Note over C: Affiche la liste des utilisateurs
     
     Note over C,S: Fermeture de connexion
     C->>S: Fermeture onglet/navigateur
@@ -34,137 +37,169 @@ sequenceDiagram
     Note over S: Retire utilisateur de la liste
     Note over S: Décrémente compteur d'utilisateurs
     S->>Tous: Diffuse le nombre d'utilisateurs mis à jour
+    S->>Tous: Diffuse la liste des utilisateurs mise à jour
     Note over Tous: Tous les clients mettent à jour leur affichage
 ```
 
-### Diagramme du système d'IDs
+### Diagramme du système de liste d'utilisateurs
 
 ```mermaid
 graph TD
-    A[Nouvelle connexion] -->|Socket.io 'connect'| B[Serveur]
-    B -->|nextUserId++| C[Attribution d'ID unique]
+    A[Nouvelle connexion] -->|Socket.io 'connect'| B[Ajout utilisateur tableau]
+    B -->|broadcastUserList| C[Diffusion liste utilisateurs]
+    C -->|io.emit userList| D[Tous les clients]
+    D -->|Réception userList| E[Mise à jour DOM/UI]
     
-    C -->|Création| D[Objet utilisateur]
-    D -->|Ajout à| E[Liste d'utilisateurs actifs]
-    E -->|Stockage| F[Tableau activeUsers]
-    
-    B -->|socket.emit| G[Envoi de l'ID au client]
-    G -->|userId| H[Client reçoit son ID]
-    H -->|Mise à jour DOM| I[Affichage de l'ID]
-    
-    J[Déconnexion] -->|Socket.io 'disconnect'| K[Recherche utilisateur]
-    K -->|Par socketId| L[Suppression de la liste]
+    F[Déconnexion] -->|Socket.io 'disconnect'| G[Suppression utilisateur tableau]
+    G -->|broadcastUserList| C
 ```
 
 ## Flux de données détaillé
 
 ### Côté serveur (server/index.js)
 
-La gestion des IDs utilisateurs est implémentée comme suit:
+La diffusion de la liste des utilisateurs est implémentée comme suit:
 
 ```javascript
-// Variables pour suivre les utilisateurs et le compteur
-let connectedUsers = 0;
-let nextUserId = 1;
-const activeUsers = [];
+// Fonction utilitaire pour diffuser la liste des utilisateurs
+function broadcastUserList() {
+    // Création d'une version simplifiée de la liste sans les socketIds
+    const userList = activeUsers.map(user => ({
+        id: user.id,
+        connectionTime: user.connectionTime
+    }));
+    
+    // Envoi de la liste à tous les clients
+    io.emit('userList', userList);
+}
 
-// Nouvelle connexion
+// Appeler cette fonction lors de chaque connexion/déconnexion
 io.on('connection', (socket) => {
-  // Attribution d'un ID unique à l'utilisateur
-  const userId = nextUserId++;
-  
-  // Stockage des informations de l'utilisateur
-  const userInfo = {
-    id: userId,
-    socketId: socket.id,
-    connectionTime: new Date().toISOString()
-  };
-  
-  // Ajout de l'utilisateur à la liste des utilisateurs actifs
-  activeUsers.push(userInfo);
-  
-  // Envoi des informations à l'utilisateur qui vient de se connecter
-  socket.emit('userId', userId);
-  
-  // Déconnexion
-  socket.on('disconnect', () => {
-    // Recherche et suppression de l'utilisateur de la liste des actifs
-    const userIndex = activeUsers.findIndex(user => user.socketId === socket.id);
-    if (userIndex !== -1) {
-      activeUsers.splice(userIndex, 1);
-    }
-  });
+    // ... code existant ...
+    
+    // Après avoir ajouté un utilisateur
+    activeUsers.push(userInfo);
+    
+    // Diffuser la liste mise à jour
+    broadcastUserList();
+    
+    socket.on('disconnect', () => {
+        // ... code existant ...
+        
+        // Après avoir supprimé un utilisateur
+        activeUsers.splice(userIndex, 1);
+        
+        // Diffuser la liste mise à jour
+        broadcastUserList();
+    });
 });
 ```
 
 ### Côté client (public/js/client.js)
 
-Le client reçoit et affiche son ID comme suit:
+Le client traite et affiche la liste des utilisateurs comme suit:
 
 ```javascript
-// Référence à l'élément DOM pour l'ID utilisateur
-const userIdElement = document.getElementById('user-id');
-
-// Réception de l'ID utilisateur
-socket.on('userId', (id) => {
-    if (userIdElement) {
-        userIdElement.textContent = id.toString();
+socket.on('userList', (users) => {
+    if (userListElement) {
+        // Vider la liste actuelle
+        userListElement.innerHTML = '';
+        
+        // Vérifier s'il y a des utilisateurs
+        if (users.length === 0) {
+            const emptyItem = document.createElement('li');
+            emptyItem.textContent = 'Aucun utilisateur connecté';
+            userListElement.appendChild(emptyItem);
+            return;
+        }
+        
+        // Trier les utilisateurs par ID
+        users.sort((a, b) => a.id - b.id);
+        
+        // Ajouter chaque utilisateur à la liste
+        users.forEach(user => {
+            const listItem = document.createElement('li');
+            
+            // Formatage de l'heure de connexion
+            const connectionDate = new Date(user.connectionTime);
+            const formattedTime = connectionDate.toLocaleTimeString();
+            
+            // Construction du contenu de l'élément
+            listItem.innerHTML = `
+                <span class="user-id-badge">#${user.id}</span>
+                <span class="connection-time">Connecté à ${formattedTime}</span>
+            `;
+            
+            // Ajout d'une classe si c'est l'utilisateur actuel
+            const myUserId = userIdElement.textContent;
+            if (user.id.toString() === myUserId) {
+                listItem.className = 'current-user';
+            }
+            
+            // Ajout à la liste
+            userListElement.appendChild(listItem);
+        });
     }
 });
 ```
 
 ## Notes d'implémentation
 
-### Système d'attribution d'IDs
+### Filtrage des données sensibles
 
-Le système d'attribution d'IDs est simple mais efficace:
-
-1. Une variable `nextUserId` commence à 1 et s'incrémente à chaque nouvelle connexion
-2. L'ID est attribué AVANT l'incrémentation (post-incrémentation)
-3. Cette approche garantit que chaque connexion reçoit un identifiant unique
-4. Les IDs restent uniques même après des déconnexions/reconnexions
-
-### Stockage des informations utilisateur
-
-Chaque utilisateur est représenté par un objet contenant:
+Dans le serveur, nous filtrons les données sensibles avant d'envoyer la liste aux clients:
 
 ```javascript
-{
-  id: 1,                           // ID attribué séquentiellement
-  socketId: 'abc123',              // ID technique de Socket.io
-  connectionTime: '2025-05-05T...' // Horodatage ISO de la connexion
-}
+const userList = activeUsers.map(user => ({
+    id: user.id,
+    connectionTime: user.connectionTime
+}));
 ```
 
-Ces informations sont stockées dans un tableau `activeUsers` qui:
-- Garde une trace de tous les utilisateurs connectés
-- Est mis à jour lors des connexions/déconnexions
-- Permet de retrouver un utilisateur via son socketId lors d'une déconnexion
+Ce code crée une nouvelle liste sans les `socketId` qui sont des informations techniques internes. Cette pratique réduit:
+1. La taille des données transmises
+2. Les risques de sécurité potentiels
+3. La confusion pour le développeur frontend
+
+### Formatage des dates
+
+Pour rendre les horodatages plus lisibles, nous utilisons `toLocaleTimeString()`:
+
+```javascript
+const connectionDate = new Date(user.connectionTime);
+const formattedTime = connectionDate.toLocaleTimeString();
+```
+
+Cela affiche l'heure dans un format adapté à la locale de l'utilisateur (ex: "14:32:45").
+
+### Tri des utilisateurs
+
+Pour assurer une présentation cohérente, nous trions les utilisateurs par ID:
+
+```javascript
+users.sort((a, b) => a.id - b.id);
+```
+
+Ce tri garantit que les utilisateurs sont toujours affichés dans l'ordre de leur connexion, ce qui est plus intuitif pour les utilisateurs.
 
 ## Détails d'implémentation par étape
 
-### Étape 3: Compteur d'utilisateurs
+### Étape 5: Listing d'utilisateurs
 
-- Suivi du nombre d'utilisateurs connectés avec une variable
-- Mise à jour du compteur lors des événements de connexion/déconnexion
-- Diffusion des mises à jour à tous les clients connectés
-- Affichage du compteur dans l'interface utilisateur
-
-### Étape 4: Système d'IDs
-
-- Attribution d'ID séquentiel (auto-incrémenté) à chaque nouvelle connexion
-- Stockage des informations utilisateur dans un tableau
-- Envoi de l'ID attribué au client concerné
-- Affichage de l'ID dans l'interface utilisateur
-- Nettoyage des informations utilisateur lors de la déconnexion
+- Création d'une fonction `broadcastUserList()` pour centraliser la diffusion
+- Filtrage des données sensibles avant transmission
+- Traitement et formatage des données côté client
+- Tri des utilisateurs par ID
+- Mise en évidence visuelle de l'utilisateur actuel
+- Gestion du cas où la liste est vide
 
 ### Prochaines implémentations
 
-#### Listing d'utilisateurs
+#### Compte à rebours
 
-Pour la prochaine étape, nous allons implémenter un listing complet des utilisateurs connectés:
+Pour la prochaine étape, nous allons implémenter un système de réinitialisation automatique:
 
-- Envoyer la liste complète des utilisateurs connectés à tous les clients
-- Mettre à jour cette liste à chaque connexion/déconnexion
-- Afficher cette liste dans l'interface utilisateur
-- Inclure les IDs et heures de connexion dans l'affichage
+- Démarrer un compte à rebours de 20 secondes quand le dernier utilisateur se déconnecte
+- Annuler le compte à rebours si un utilisateur se reconnecte avant la fin
+- À la fin du compte à rebours, réinitialiser le compteur d'IDs et la liste des utilisateurs
+- Informer tous les clients de la réinitialisation

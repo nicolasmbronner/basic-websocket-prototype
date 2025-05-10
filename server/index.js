@@ -6,9 +6,10 @@
  * - Intégration de Socket.io pour WebSocket
  * - Gestion des connexions WebSocket et compteur d'utilisateurs
  * - Attribution d'IDs  uniques  aux utilisateurs
+ * - Gestion et diffusion de la liste des utilisateurs connectés
  * 
  * Créé le: 05/05/2025
- * Dernière modification: 09/05/2025
+ * Dernière modification: 10/05/2025
  */
 
 import express from 'express';
@@ -34,6 +35,23 @@ app.use(express.static("public"));
 let connectedUsers = 0;
 let nextUserId = 1;
 const activeUsers = [];
+
+/**
+ * Fonction utilitaire pour diffuser la liste des utilisateurs à tous les clients
+ * 
+ * → Envoie données vers: Clients WebSocket
+ */
+function broadcastUserList() {
+    // Création d'une version simplifiée de la liste des socketIds
+    // (qui sont des informations techniques internes)
+    const userList = activeUsers.map(user => ({
+        id: user.id,
+        connectionTime: user.connectionTime
+    }));
+
+    // Envoi de la liste à tous les clients
+    io.emit('userList', userList);
+}
 
 /**
  * Gestion des connexions WebSocket
@@ -67,6 +85,9 @@ io.on('connection', (socket) => {
     // Envoi du compteur à tous les clients (y compris le nouveau)
     io.emit('userCount', connectedUsers);
 
+    // Diffusion de la liste mise à jour des utilisateurs
+    broadcastUserList();
+
     // Déconnexion
     socket.on('disconnect', () => {
         console.log('Client déconnecté');
@@ -92,6 +113,9 @@ io.on('connection', (socket) => {
 
         // Envoi du compteur mis à jour à tous les clients restants
         io.emit('userCount', connectedUsers);
+
+        // Diffusion de la liste mise à jour des utilisateurs
+        broadcastUserList();
     })
 });
 
