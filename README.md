@@ -7,7 +7,7 @@ Un prototype WebSocket simple mais complet qui implémente un suivi de connexion
 - ✅ Affichage du nombre d'utilisateurs connectés en temps réel
 - ✅ Listing des utilisateurs connectés avec IDs auto-incrémentés
 - ✅ Affichage de la liste des utilisateurs avec leurs heures de connexion
-- ⏳ Système de réinitialisation automatique après 20 secondes sans connexions
+- ✅ Système de réinitialisation automatique après 20 secondes sans connexions
 - ⏳ Interface utilisateur intuitive
 
 ## 🔍 Aperçu de l'architecture
@@ -29,6 +29,11 @@ graph TD
     H[Tableau activeUsers] -->|Source pour| I[Diffusion Liste]
     I -->|Reçu par| A
     A -->|Affiche| J[Liste Utilisateurs UI]
+    
+    K[Système Compte à Rebours] -->|Déclenché quand| L[Dernier utilisateur déconnecté]
+    K -->|Annulé si| M[Nouvel utilisateur se connecte]
+    K -->|Réinitialise| N[Compteurs et liste si expire]
+    K -->|Notifie| A
 ```
 
 ## 🛠️ Technologies utilisées
@@ -58,6 +63,9 @@ Pour tester les fonctionnalités en temps réel:
 2. Ouvrez un deuxième onglet - vous aurez l'ID #2 et verrez les deux utilisateurs dans la liste
 3. Ouvrez un troisième onglet - vous verrez les trois utilisateurs dans la liste
 4. Fermez un des onglets - il disparaîtra instantanément de toutes les listes
+5. Fermez tous les onglets sauf un, puis fermez ce dernier - un compte à rebours de 20 secondes s'affichera
+6. Si vous reconnectez avant la fin du décompte, le système continuera normalement
+7. Si vous attendez la fin du décompte, le système se réinitialisera et les nouveaux utilisateurs recevront des IDs à partir de 1
 
 ## 📂 Structure du projet
 
@@ -83,7 +91,7 @@ websocket-demo/
 - [x] Compteur d'utilisateurs - Suivi et affichage des connexions
 - [x] Système d'IDs - Attribution d'identifiants uniques
 - [x] Listing d'utilisateurs - Affichage de la liste des utilisateurs connectés
-- [ ] Compte à rebours - Réinitialisation après déconnexion
+- [x] Compte à rebours - Réinitialisation après déconnexion
 - [ ] Amélioration UI - Interface utilisateur soignée
 - [ ] Documentation finale - Finalisation de la documentation
 

@@ -31,175 +31,230 @@ sequenceDiagram
     Note over C: Met à jour le compteur d'utilisateurs
     Note over C: Affiche la liste des utilisateurs
     
-    Note over C,S: Fermeture de connexion
+    Note over C,S: Fermeture de connexion (dernier utilisateur)
     C->>S: Fermeture onglet/navigateur
     S->>C: Ferme la connexion WebSocket
     Note over S: Retire utilisateur de la liste
     Note over S: Décrémente compteur d'utilisateurs
-    S->>Tous: Diffuse le nombre d'utilisateurs mis à jour
-    S->>Tous: Diffuse la liste des utilisateurs mise à jour
-    Note over Tous: Tous les clients mettent à jour leur affichage
+    Note over S: Démarre compte à rebours (20s)
+    S->>Tous: Diffuse le début du compte à rebours
+    S->>Tous: Diffuse mises à jour chaque seconde
+    
+    alt Reconnexion avant la fin du compte à rebours
+        Note over C,S: Nouvelle connexion pendant le compte à rebours
+        C2->>S: Nouvelle connexion WebSocket
+        Note over S: Annule le compte à rebours
+        S->>Tous: Informe de l'annulation du compte à rebours
+        Note over S: Traitement normal de la connexion
+    else Aucune reconnexion avant la fin
+        Note over S: Fin du compte à rebours
+        Note over S: Réinitialise le système (compteurs, liste)
+        S->>Tous: Informe de la réinitialisation du système
+    end
 ```
 
-### Diagramme du système de liste d'utilisateurs
+### Diagramme du système de compte à rebours
 
 ```mermaid
 graph TD
-    A[Nouvelle connexion] -->|Socket.io 'connect'| B[Ajout utilisateur tableau]
-    B -->|broadcastUserList| C[Diffusion liste utilisateurs]
-    C -->|io.emit userList| D[Tous les clients]
-    D -->|Réception userList| E[Mise à jour DOM/UI]
+    A[Dernier utilisateur se déconnecte] -->|connectedUsers === 0| B[Démarrage du compte à rebours]
+    B -->|startCountdown()| C[Initialisation minuteur]
+    C -->|Toutes les secondes| D{Temps restant > 0?}
     
-    F[Déconnexion] -->|Socket.io 'disconnect'| G[Suppression utilisateur tableau]
-    G -->|broadcastUserList| C
+    D -->|Oui| E[Mise à jour du temps]
+    E -->|io.emit countdownUpdate| F[Notification des clients]
+    F --> D
+    
+    D -->|Non| G[Réinitialisation du système]
+    G -->|resetSystem()| H[Remise à zéro des compteurs]
+    H -->|io.emit systemReset| I[Notification des clients]
+    
+    J[Nouvel utilisateur se connecte] -->|Pendant compte à rebours| K[Annulation du compte à rebours]
+    K -->|cancelCountdown()| L[Arrêt du minuteur]
+    L -->|io.emit countdownCancel| M[Notification des clients]
 ```
 
 ## Flux de données détaillé
 
 ### Côté serveur (server/index.js)
 
-La diffusion de la liste des utilisateurs est implémentée comme suit:
+Le système de compte à rebours est implémenté comme suit:
 
 ```javascript
-// Fonction utilitaire pour diffuser la liste des utilisateurs
-function broadcastUserList() {
-    // Création d'une version simplifiée de la liste sans les socketIds
-    const userList = activeUsers.map(user => ({
-        id: user.id,
-        connectionTime: user.connectionTime
-    }));
+// Variables pour le compte à rebours
+let countdownTimer = null;
+const COUNTDOWN_DURATION = 20; // durée en secondes
+let countdownRemaining = 0;
+
+// Démarrage du compte à rebours quand le dernier utilisateur se déconnecte
+function startCountdown() {
+    // Initialisation du temps restant
+    countdownRemaining = COUNTDOWN_DURATION;
     
-    // Envoi de la liste à tous les clients
-    io.emit('userList', userList);
+    // Informer les clients du démarrage
+    io.emit('countdownStart', countdownRemaining);
+    
+    // Envoyer une mise à jour chaque seconde
+    countdownTimer = setInterval(() => {
+        countdownRemaining--;
+        
+        // Envoyer la mise à jour
+        io.emit('countdownUpdate', countdownRemaining);
+        
+        // Si le compte à rebours est terminé
+        if (countdownRemaining <= 0) {
+            resetSystem();
+        }
+    }, 1000);
 }
 
-// Appeler cette fonction lors de chaque connexion/déconnexion
+// Annulation du compte à rebours quand un utilisateur se connecte
+function cancelCountdown() {
+    if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+        countdownRemaining = 0;
+        
+        // Informer les clients de l'annulation
+        io.emit('countdownCancel');
+    }
+}
+
+// Réinitialisation du système après le compte à rebours
+function resetSystem() {
+    // Arrêter le compte à rebours
+    if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+    }
+    
+    // Réinitialiser les compteurs
+    nextUserId = 1;
+    
+    // Informer les clients de la réinitialisation
+    io.emit('systemReset');
+}
+
+// Vérifier si c'est le dernier utilisateur qui se déconnecte
+socket.on('disconnect', () => {
+    // Code existant...
+    
+    // Si c'était le dernier utilisateur, démarrer le compte à rebours
+    if (connectedUsers === 0) {
+        startCountdown();
+    }
+});
+
+// Annuler le compte à rebours si un utilisateur se connecte pendant
 io.on('connection', (socket) => {
-    // ... code existant ...
+    // Si un compte à rebours est en cours, l'annuler
+    if (countdownTimer) {
+        cancelCountdown();
+    }
     
-    // Après avoir ajouté un utilisateur
-    activeUsers.push(userInfo);
-    
-    // Diffuser la liste mise à jour
-    broadcastUserList();
-    
-    socket.on('disconnect', () => {
-        // ... code existant ...
-        
-        // Après avoir supprimé un utilisateur
-        activeUsers.splice(userIndex, 1);
-        
-        // Diffuser la liste mise à jour
-        broadcastUserList();
-    });
+    // Code existant...
 });
 ```
 
 ### Côté client (public/js/client.js)
 
-Le client traite et affiche la liste des utilisateurs comme suit:
+Le client gère les événements du compte à rebours comme suit:
 
 ```javascript
-socket.on('userList', (users) => {
-    if (userListElement) {
-        // Vider la liste actuelle
-        userListElement.innerHTML = '';
-        
-        // Vérifier s'il y a des utilisateurs
-        if (users.length === 0) {
-            const emptyItem = document.createElement('li');
-            emptyItem.textContent = 'Aucun utilisateur connecté';
-            userListElement.appendChild(emptyItem);
-            return;
-        }
-        
-        // Trier les utilisateurs par ID
-        users.sort((a, b) => a.id - b.id);
-        
-        // Ajouter chaque utilisateur à la liste
-        users.forEach(user => {
-            const listItem = document.createElement('li');
-            
-            // Formatage de l'heure de connexion
-            const connectionDate = new Date(user.connectionTime);
-            const formattedTime = connectionDate.toLocaleTimeString();
-            
-            // Construction du contenu de l'élément
-            listItem.innerHTML = `
-                <span class="user-id-badge">#${user.id}</span>
-                <span class="connection-time">Connecté à ${formattedTime}</span>
-            `;
-            
-            // Ajout d'une classe si c'est l'utilisateur actuel
-            const myUserId = userIdElement.textContent;
-            if (user.id.toString() === myUserId) {
-                listItem.className = 'current-user';
-            }
-            
-            // Ajout à la liste
-            userListElement.appendChild(listItem);
-        });
+// Début du compte à rebours
+socket.on('countdownStart', (seconds) => {
+    if (countdownContainerElement) {
+        countdownContainerElement.style.display = 'block';
+    }
+    
+    if (countdownElement) {
+        countdownElement.textContent = seconds.toString();
+    }
+});
+
+// Mise à jour du compte à rebours
+socket.on('countdownUpdate', (seconds) => {
+    if (countdownElement) {
+        countdownElement.textContent = seconds.toString();
+    }
+});
+
+// Annulation du compte à rebours
+socket.on('countdownCancel', () => {
+    if (countdownContainerElement) {
+        countdownContainerElement.style.display = 'none';
+    }
+});
+
+// Réinitialisation du système
+socket.on('systemReset', () => {
+    if (countdownContainerElement) {
+        countdownContainerElement.style.display = 'none';
     }
 });
 ```
 
 ## Notes d'implémentation
 
-### Filtrage des données sensibles
+### Fonctionnement du compte à rebours
 
-Dans le serveur, nous filtrons les données sensibles avant d'envoyer la liste aux clients:
-
-```javascript
-const userList = activeUsers.map(user => ({
-    id: user.id,
-    connectionTime: user.connectionTime
-}));
-```
-
-Ce code crée une nouvelle liste sans les `socketId` qui sont des informations techniques internes. Cette pratique réduit:
-1. La taille des données transmises
-2. Les risques de sécurité potentiels
-3. La confusion pour le développeur frontend
-
-### Formatage des dates
-
-Pour rendre les horodatages plus lisibles, nous utilisons `toLocaleTimeString()`:
+Le système de compte à rebours utilise `setInterval()` pour créer une minuterie qui s'exécute chaque seconde:
 
 ```javascript
-const connectionDate = new Date(user.connectionTime);
-const formattedTime = connectionDate.toLocaleTimeString();
+countdownTimer = setInterval(() => {
+    // Code à exécuter chaque seconde
+}, 1000);
 ```
 
-Cela affiche l'heure dans un format adapté à la locale de l'utilisateur (ex: "14:32:45").
-
-### Tri des utilisateurs
-
-Pour assurer une présentation cohérente, nous trions les utilisateurs par ID:
+Pour annuler ce minuteur, nous utilisons `clearInterval()`:
 
 ```javascript
-users.sort((a, b) => a.id - b.id);
+clearInterval(countdownTimer);
+countdownTimer = null;
 ```
 
-Ce tri garantit que les utilisateurs sont toujours affichés dans l'ordre de leur connexion, ce qui est plus intuitif pour les utilisateurs.
+### États du système
+
+Le système a plusieurs états possibles:
+1. **Actif**: Au moins un utilisateur est connecté
+2. **Compte à rebours**: Aucun utilisateur connecté, en attente de reconnexion
+3. **Réinitialisé**: Après la fin du compte à rebours, prêt pour de nouvelles connexions
+
+### Animation CSS
+
+Pour attirer l'attention sur le compte à rebours, nous utilisons une animation CSS simple:
+
+```css
+#countdown-container {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.8; }
+    100% { opacity: 1; }
+}
+```
 
 ## Détails d'implémentation par étape
 
-### Étape 5: Listing d'utilisateurs
+### Étape 6: Compte à rebours
 
-- Création d'une fonction `broadcastUserList()` pour centraliser la diffusion
-- Filtrage des données sensibles avant transmission
-- Traitement et formatage des données côté client
-- Tri des utilisateurs par ID
-- Mise en évidence visuelle de l'utilisateur actuel
-- Gestion du cas où la liste est vide
+- Implémentation d'un système de compte à rebours de 20 secondes
+- Démarrage automatique lorsque le dernier utilisateur se déconnecte
+- Annulation automatique si un utilisateur se reconnecte avant la fin
+- Réinitialisation du système à la fin du compte à rebours
+- Communication en temps réel avec les clients potentiels
+- Affichage visuel du compte à rebours avec animation
 
 ### Prochaines implémentations
 
-#### Compte à rebours
+#### Amélioration UI
 
-Pour la prochaine étape, nous allons implémenter un système de réinitialisation automatique:
+Pour la prochaine étape, nous allons améliorer l'interface utilisateur:
 
-- Démarrer un compte à rebours de 20 secondes quand le dernier utilisateur se déconnecte
-- Annuler le compte à rebours si un utilisateur se reconnecte avant la fin
-- À la fin du compte à rebours, réinitialiser le compteur d'IDs et la liste des utilisateurs
-- Informer tous les clients de la réinitialisation
+- Regrouper et harmoniser les éléments visuels
+- Ajouter des effets de transition entre les états
+- Optimiser la disposition pour tous les appareils (responsive design)
+- Améliorer l'accessibilité et la convivialité
+- Ajouter des icônes et indicateurs visuels

@@ -7,9 +7,10 @@
  * - Gestion des connexions WebSocket et compteur d'utilisateurs
  * - Attribution d'IDs  uniques  aux utilisateurs
  * - Gestion et diffusion de la liste des utilisateurs connectés
+ * - Système de réinitialisation automatique après inactivité
  * 
  * Créé le: 05/05/2025
- * Dernière modification: 10/05/2025
+ * Dernière modification: 21/05/2025
  */
 
 import express from 'express';
@@ -36,6 +37,11 @@ let connectedUsers = 0;
 let nextUserId = 1;
 const activeUsers = [];
 
+// Variables pour le système de compte à rebours
+let countdownTimer = null;
+const COUNTDOWN_DURATION = 20; // durée en secondes
+let countdownRemaining = 0;
+
 /**
  * Fonction utilitaire pour diffuser la liste des utilisateurs à tous les clients
  * 
@@ -54,12 +60,82 @@ function broadcastUserList() {
 }
 
 /**
+ * Fonction pour démarrer le compte à rebours de réinitialisation
+ * Se déclenche quand le dernier utilisateur se déconnecte
+ */
+function startCountdown() {
+    // Initialisation du temps restant
+    countdownRemaining = COUNTDOWN_DURATION;
+
+    // Informer les clients potentiels que le compte à rebours a démarré
+    io.emit('countdownStart', countdownRemaining);
+
+    // Envoyer une mise à jour chaque seconde
+    countdownTimer = setInterval(() => { // Exécute callback de façon répétée à intervalles réguliers
+        countdownRemaining--;
+
+        // Envoyer la mise à jour du compte à rebours
+        io.emit('countdownUpdate', countdownRemaining);
+
+        // Si le compte à rebours est terminé
+        if (countdownRemaining <= 0) {
+            resetSystem();
+        }
+    }, 1000);
+
+    console.log(`Compte à rebours démarré: ${COUNTDOWN_DURATION} secondes`);
+}
+
+/**
+ * Fonction pour annuler le compte à rebours
+ * Se déclenche quand un utilisateur se connecte pendant le compte à rebours
+ */
+function cancelCountdown() {
+    if (countdownTimer) {
+        clearInterval(countdownTimer); // Arrête le compte à rebours défini plus haut
+        countdownTimer = null;
+        countdownRemaining = 0;
+
+        // Informer les clients que le compte à rebours est annulé
+        io.emit('countdownCancel');
+
+        console.log('Compte à rebours annulé');
+    }
+}
+
+/**
+ * Fonction pour réinitialiser le système après le compte à rebours
+ * Remet à zéro les compteurs et la liste d'utilisateurs
+ */
+function resetSystem() {
+    // Arrêter le compte à rebours
+    if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+    }
+
+    // Réinitialiser les compteurs
+    nextUserId = 1;
+
+    // Informer les clients potentiels de la réinitialisation
+    io.emit('systemReset');
+
+    console.log('Système réinitialisé');
+}
+
+
+/**
  * Gestion des connexions WebSocket
  * 
  * ← Reçoit données de: Clients WebSocket (navigateur)
  */
 io.on('connection', (socket) => {
     console.log('Nouvelle connexion WebSocket établie');
+
+    // Si un compte à rebours est en cours, l'annuler
+    if (countdownTimer) {
+        cancelCountdown();
+    }
 
     // Attribution d'un ID unique à l'utilisateur
     const userID = nextUserId++;
@@ -116,7 +192,12 @@ io.on('connection', (socket) => {
 
         // Diffusion de la liste mise à jour des utilisateurs
         broadcastUserList();
-    })
+
+        // Si c'était le dernier utilisateur, démarrer le compte à rebours
+        if (connectedUsers === 0) {
+            startCountdown();
+        }
+    });
 });
 
 // Route principale

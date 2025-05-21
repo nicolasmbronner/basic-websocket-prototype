@@ -5,9 +5,10 @@
  * - Connexion au serveur Websocket
  * - Traitement des événements côté client
  * - Mise à jour de l'interface utilisateur
+ * - Gestion du compte à rebours de réinitialisation
  * 
  * Créé le 05/05/2025
- * Dernière modification: 10/05/2025
+ * Dernière modification: 21/05/2025
  */
 
 /**
@@ -24,6 +25,8 @@ const statusElement = document.getElementById('status');
 const userCountElement = document.getElementById('user-count');
 const userIdElement = document.getElementById('user-id');
 const userListElement = document.getElementById('user-list');
+const countdownElement = document.getElementById('countdown');
+const countdownContainerElement = document.getElementById('countdown-container');
 
 /**
  * Gestion des événements webSocket
@@ -121,6 +124,52 @@ socket.on('userList', (users) => {
 
             // Ajout à la liste
             userListElement.appendChild(listItem);
-        })
+        });
     }
-})
+});
+
+/**
+ * Gestion du compte à rebours
+ * 
+ * ← Reçoit données de: Serveur WebSocket (événements liés au compte à rebours)
+ * → Modifie: DOM (éléments liés au compte à rebours)
+ */
+
+// Début du compte à rebours
+socket.on('countdownStart', (seconds) => {
+    console.log(`Compte à rebours démarré: ${seconds} secondes`);
+
+    if (countdownContainerElement) {
+        countdownContainerElement.style.display = 'block';
+    }
+});
+
+// MIse à jour du compte à rebours
+socket.on('countdownUpdate', (seconds) => {
+    console.log(`Compte à rebours: ${seconds} secondes restantes`);
+
+    if (countdownElement) {
+        countdownElement.textContent = seconds.toString();
+    }
+});
+
+// Annulation du compte à rebours
+socket.on('countdownCancel', () => {
+    console.log('Compte à rebours annulé');
+
+    if (countdownContainerElement) {
+        countdownContainerElement.style.display = 'none';
+    }
+});
+
+// Réinitialisation du système
+socket.on('systemReset', () => {
+    console.log('Système réinitialisé');
+
+    if (countdownContainerElement) {
+        countdownContainerElement.style.display = 'none';
+    }
+
+    // Si l'utilisateur est encore connecté, il recevra un nouvel ID
+    // lors de sa prochaine connexion
+});
