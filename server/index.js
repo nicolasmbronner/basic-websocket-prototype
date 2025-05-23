@@ -67,15 +67,10 @@ function startCountdown() {
     // Initialisation du temps restant
     countdownRemaining = COUNTDOWN_DURATION;
 
-    // Informer les clients potentiels que le compte à rebours a démarré
-    io.emit('countdownStart', countdownRemaining);
-
-    // Envoyer une mise à jour chaque seconde
+    // Envoyer une mise à jour chaque seconde (uniquement logs serveur)
     countdownTimer = setInterval(() => { // Exécute callback de façon répétée à intervalles réguliers
         countdownRemaining--;
-
-        // Envoyer la mise à jour du compte à rebours
-        io.emit('countdownUpdate', countdownRemaining);
+        console.log(`Compte à rebours: ${countdownRemaining} secondes restantes`);
 
         // Si le compte à rebours est terminé
         if (countdownRemaining <= 0) {
@@ -96,9 +91,6 @@ function cancelCountdown() {
         countdownTimer = null;
         countdownRemaining = 0;
 
-        // Informer les clients que le compte à rebours est annulé
-        io.emit('countdownCancel');
-
         console.log('Compte à rebours annulé');
     }
 }
@@ -116,9 +108,6 @@ function resetSystem() {
 
     // Réinitialiser les compteurs
     nextUserId = 1;
-
-    // Informer les clients potentiels de la réinitialisation
-    io.emit('systemReset');
 
     console.log('Système réinitialisé');
 }
