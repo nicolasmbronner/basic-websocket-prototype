@@ -67,18 +67,24 @@ function startCountdown() {
     // Initialisation du temps restant
     countdownRemaining = COUNTDOWN_DURATION;
 
+    // Message initial du compte à rebours
+    console.log(`Compte à rebours de réinitialisation démarré: `);
+
+    // Affichage de la première valeur du compte à rebours
+    process.stdout.write(`\rCompte à rebours: ${countdownRemaining} secondes avant réinitialisation du système.`);
+
     // Envoyer une mise à jour chaque seconde (uniquement logs serveur)
     countdownTimer = setInterval(() => { // Exécute callback de façon répétée à intervalles réguliers
         countdownRemaining--;
-        console.log(`Compte à rebours: ${countdownRemaining} secondes restantes`);
 
         // Si le compte à rebours est terminé
         if (countdownRemaining <= 0) {
             resetSystem();
+        } else {
+            // Affichage de la nouvelle valeur
+            process.stdout.write(`\rCompte à rebours: ${countdownRemaining} secondes avant réinitialisation du système.`);
         }
     }, 1000);
-
-    console.log(`Compte à rebours démarré: ${COUNTDOWN_DURATION} secondes`);
 }
 
 /**
@@ -91,7 +97,9 @@ function cancelCountdown() {
         countdownTimer = null;
         countdownRemaining = 0;
 
-        console.log('Compte à rebours annulé');
+        // Effacer la ligne du compte à rebours et afficher le message d'annulation
+        process.stdout.write(`\r\x1b[K`);
+        console.log('Compte à rebours annulé - Nouvel utilisateur connecté');
     }
 }
 
@@ -106,10 +114,12 @@ function resetSystem() {
         countdownTimer = null;
     }
 
+    // Effacer la ligne du compte à rebours et afficher le message de réinitialisation
+    process.stdout.write(`\r\x1b[K`);
+    console.log(`Système réinitialisé - Compteur d'IDs remis à 1`);
+
     // Réinitialiser les compteurs
     nextUserId = 1;
-
-    console.log('Système réinitialisé');
 }
 
 
