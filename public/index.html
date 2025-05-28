@@ -3,44 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Demo WebSocket</title>
+    <title>WebSocket Demo - Temps Réel</title>
+    <meta name="description" content="Démonstration WebSocket en temps réel avec gestion d'utilisateurs connectés">
+    
+    <!-- Police Google Fonts pour un look moderne -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles personnalisés -->
     <link rel="stylesheet" href="/css/style.css">
+    
+    <!-- Favicon (optionnel) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
 </head>
-
 <body>
     <div class="container">
-        <h1>Démo Websocket</h1>
+        <header>
+            <h1>🚀 Démo WebSocket</h1>
+        </header>
+        
+        <main>
+            <section id="connection-status" class="section-card">
+                <h2>📡 Statut de connexion</h2>
+                <p>Statut: <span id="status">Non connecté</span></p>
+            </section>
+            
+            <section id="user-counter" class="section-card">
+                <h2>👥 Compteur d'utilisateurs</h2>
+                <p>Nombre d'utilisateurs connectés: <span id="user-count">0</span></p>
+            </section>
 
-        <div id="connection-status">
-            Status: <span id="status">Non connecté</span>
-        </div>
-
-        <div id="user-counter">
-            <h2>Compteur d'utilisateurs</h2>
-            <p>Nombre d'utilisateurs connectés: <span id="user-count">0</span></p>
-        </div>
-
-        <div id="user-info">
-            <h2>Votre identifiant</h2>
-            <p>Vous êtes l'utilisateur #<span id="user-id">-</span></p>
-        </div>
-
-        <div id="users-container">
-            <h2>Utilisateurs connectés</h2>
-            <ul id="user-list">
-                <li class="empty-list">Chargement de la liste...</li>
-            </ul>
-        </div>
-
-        <div class="footer">
-            <p>Créé le: 05/05/2025</p>
-        </div>
+            <section id="user-info" class="section-card">
+                <h2>🆔 Votre identifiant</h2>
+                <p>Vous êtes l'utilisateur #<span id="user-id">-</span></p>
+            </section>
+            
+            <section id="users-container" class="section-card">
+                <h2>📋 Utilisateurs connectés</h2>
+                <ul id="user-list">
+                    <li class="empty-list">Chargement de la liste...</li>
+                </ul>
+            </section>
+        </main>
+        
+        <footer class="footer">
+            <p>
+                💻 Créé le 05/05/2025 | 
+                <strong>Prototype WebSocket Temps-Réel</strong> | 
+                🔧 Node.js + Socket.io
+            </p>
+        </footer>
     </div>
 
     <!-- Chargement de socket.io (client) -->
     <script src="/socket.io/socket.io.js"></script>
-
+    
     <!-- Notre code client -->
-     <script src="/js/client.js"></script>
+    <script src="/js/client.js"></script>
 </body>
 </html>
