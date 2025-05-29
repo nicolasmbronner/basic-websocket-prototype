@@ -55,7 +55,7 @@ sequenceDiagram
 ```mermaid
 graph TD
     A[Dernier utilisateur se déconnecte] -->|connectedUsers === 0| B[Démarrage du compte à rebours]
-    B -->|startCountdown()| C[Initialisation minuteur]
+    B -->|startCountdown| C[Initialisation timer]
     C -->|Toutes les secondes| D{Temps restant > 0?}
     
     D -->|Oui| E[Mise à jour du temps]
@@ -63,11 +63,11 @@ graph TD
     F --> D
     
     D -->|Non| G[Réinitialisation du système]
-    G -->|resetSystem()| H[Remise à zéro des compteurs]
+    G -->|resetSystem| H[Remise à zéro des compteurs]
     H -->|console.log| I[Log serveur de réinitialisation]
     
     J[Nouvel utilisateur se connecte] -->|Pendant compte à rebours| K[Annulation du compte à rebours]
-    K -->|cancelCountdown()| L[Arrêt du minuteur]
+    K -->|cancelCountdown| L[Arrêt du timer]
     L -->|console.log| M[Log serveur d'annulation]
 ```
 
