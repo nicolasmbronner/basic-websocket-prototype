@@ -297,37 +297,257 @@ users.forEach((user, index) => {
 **Support minimal requis**:
 - Chrome 49+, Firefox 31+, Safari 9.1+, Edge 16+
 
-## Détails d'implémentation par étape
+## API interne et événements WebSocket
 
-### Étape 7: Amélioration UI
+### Événements émis par le serveur
 
-- Redesign complet avec un système de design moderne
-- Implémentation d'animations CSS et JavaScript
-- Système de notifications en temps réel
-- Design responsive pour tous les appareils
-- Amélioration de l'accessibilité et de l'expérience utilisateur
-- Integration de Google Fonts pour une typographie professionnelle
-- Optimisation des performances d'animation
+#### `userCount`
+```javascript
+// Émis à tous les clients quand le nombre d'utilisateurs change
+io.emit('userCount', connectedUsers);
+```
+**Données envoyées** : `number` - Nombre total d'utilisateurs connectés
+**Fréquence** : À chaque connexion/déconnexion
 
-### Architecture technique de l'UI
+#### `userId` 
+```javascript
+// Émis uniquement au client qui vient de se connecter
+socket.emit('userId', userId);
+```
+**Données envoyées** : `number` - ID unique attribué à l'utilisateur
+**Fréquence** : Une seule fois par connexion
 
-L'interface moderne repose sur plusieurs couches:
+#### `userList`
+```javascript
+// Émis à tous les clients quand la liste change
+io.emit('userList', userList);
+```
+**Données envoyées** : `Array<{id: number, connectionTime: string}>` - Liste filtrée des utilisateurs
+**Fréquence** : À chaque connexion/déconnexion
 
-1. **Couche de présentation**: HTML sémantique avec ARIA
-2. **Couche de style**: CSS avec variables et système de design cohérent
-3. **Couche d'interaction**: JavaScript pour les animations et notifications
-4. **Couche de communication**: WebSocket pour les mises à jour en temps réel
+### Événements reçus par le client
 
-Cette architecture garantit une séparation claire des responsabilités et une maintenance facilitée.
+#### `connect`
+```javascript
+socket.on('connect', () => {
+    // Connexion établie avec le serveur
+});
+```
 
-### Prochaines implémentations
+#### `disconnect`
+```javascript
+socket.on('disconnect', () => {
+    // Connexion perdue avec le serveur
+});
+```
 
-#### Documentation finale
+### Structure des données
 
-Pour la dernière étape, nous finaliserons:
+#### Objet utilisateur (côté serveur)
+```javascript
+{
+    id: 1,                           // ID séquentiel unique
+    socketId: 'abc123def456',        // ID technique Socket.io
+    connectionTime: '2025-05-05T...' // Timestamp ISO 8601
+}
+```
 
-- Guide d'installation détaillé
-- Documentation des API internes
-- Guide de contribution pour les développeurs
-- Exemples d'extension et de personnalisation
-- Tests de performance et recommandations d'optimisation
+#### Objet utilisateur (côté client)
+```javascript
+{
+    id: 1,                           // ID séquentiel unique
+    connectionTime: '2025-05-05T...' // Timestamp ISO 8601
+    // socketId filtré pour la sécurité
+}
+```
+
+## Guide de personnalisation
+
+### Modifier les couleurs
+
+Changez les variables CSS dans `public/css/style.css` :
+```css
+:root {
+    --primary-color: #your-color;
+    --success-color: #your-color;
+    --warning-color: #your-color;
+}
+```
+
+### Modifier la durée du compte à rebours
+
+Dans `server/index.js` :
+```javascript
+const COUNTDOWN_DURATION = 30; // Nouvelle durée en secondes
+```
+
+### Ajouter de nouveaux événements WebSocket
+
+#### Côté serveur
+```javascript
+// Émission d'un nouvel événement
+socket.emit('customEvent', data);
+
+// Écoute d'un événement du client
+socket.on('clientEvent', (data) => {
+    // Traitement
+});
+```
+
+#### Côté client
+```javascript
+// Écoute du nouvel événement
+socket.on('customEvent', (data) => {
+    // Traitement et mise à jour UI
+});
+
+// Émission vers le serveur
+socket.emit('clientEvent', data);
+```
+
+### Ajouter des animations personnalisées
+
+#### CSS
+```css
+@keyframes customAnimation {
+    from { /* état initial */ }
+    to { /* état final */ }
+}
+
+.custom-element {
+    animation: customAnimation 0.5s ease-out;
+}
+```
+
+#### JavaScript
+```javascript
+function customAnimation(element) {
+    element.style.transition = 'all 0.3s ease-out';
+    element.style.transform = 'scale(1.1)';
+    
+    setTimeout(() => {
+        element.style.transform = 'scale(1)';
+    }, 300);
+}
+```
+
+## Optimisations de performance
+
+### Côté serveur
+
+**Gestion mémoire** :
+- Le tableau `activeUsers` est nettoyé automatiquement
+- Les timers sont correctement supprimés avec `clearInterval()`
+- Pas de fuites mémoire dans les event listeners
+
+**Optimisations réseau** :
+- Filtrage des données sensibles avant envoi (socketId)
+- Événements diffusés uniquement quand nécessaire
+- Pas de polling, uniquement des événements push
+
+### Côté client
+
+**Animations performantes** :
+- Utilisation de `transform` et `opacity` (GPU-accélérés)
+- Limitation du nombre d'animations simultanées
+- Nettoyage automatique des éléments temporaires
+
+**Gestion DOM** :
+- Sélection d'éléments mise en cache
+- Modifications DOM groupées quand possible
+- Évitement des reflows/repaints inutiles
+
+## Tests et débogage
+
+### Logs de débogage
+
+#### Activer les logs Socket.io
+```javascript
+// Dans le navigateur (F12 > Console)
+localStorage.debug = 'socket.io-client:socket';
+
+// Puis rechargez la page
+location.reload();
+```
+
+#### Logs personnalisés
+```javascript
+// Ajoutez dans client.js pour plus de détails
+socket.onAny((event, ...args) => {
+    console.log(`Événement reçu: ${event}`, args);
+});
+```
+
+### Tests de charge
+
+Pour tester avec de nombreuses connexions simultanées :
+
+```javascript
+// Script de test à exécuter dans la console du navigateur
+for (let i = 0; i < 10; i++) {
+    setTimeout(() => {
+        window.open(window.location.href);
+    }, i * 100);
+}
+```
+
+### Métriques de performance
+
+Surveillez ces indicateurs :
+- **Temps de connexion WebSocket** : < 100ms normalement
+- **Latence des événements** : < 50ms pour les mises à jour
+- **Utilisation mémoire** : Stable dans le temps (pas de fuites)
+- **CPU serveur** : < 5% en utilisation normale
+
+## Sécurité
+
+### Bonnes pratiques implémentées
+
+- **Filtrage des données** : socketId non exposé côté client
+- **Validation des entrées** : Types vérifiés avant traitement
+- **Pas d'exécution de code** : Aucun `eval()` ou équivalent
+- **CORS approprié** : Socket.io configuré pour l'origine correcte
+
+### Améliorations possibles
+
+Pour un environnement de production :
+- **Rate limiting** : Limiter les connexions par IP
+- **Authentification** : Système de tokens/sessions
+- **Validation stricte** : Schemas de validation pour tous les événements
+- **Logs de sécurité** : Surveillance des connexions suspectes
+
+## Contributions et développement
+
+### Architecture modulaire
+
+Le code est organisé pour faciliter les extensions :
+- **Séparation claire** : Serveur, client, styles séparés
+- **Fonctions utilitaires** : Code réutilisable isolé
+- **Configuration centralisée** : Constantes en haut des fichiers
+
+### Standards de code
+
+- **ES6+** : Utilisation des fonctionnalités modernes
+- **Commentaires explicatifs** : Code documenté en français
+- **Noms descriptifs** : Variables et fonctions explicites
+- **Gestion d'erreurs** : Try/catch et vérifications appropriées
+
+### Extensions suggérées
+
+#### Niveau débutant
+- Changer les couleurs et animations
+- Ajouter des émojis ou icônes personnalisés
+- Modifier les messages affichés
+
+#### Niveau intermédiaire  
+- Ajouter des "salles" (rooms) pour séparer les utilisateurs
+- Implémenter un système de pseudonymes
+- Créer un historique des connexions
+
+#### Niveau avancé
+- Intégrer une base de données (MongoDB/PostgreSQL)
+- Ajouter un système d'authentification
+- Créer une API REST complémentaire
+- Implémenter des tests automatisés
+
+Cette documentation technique sert de référence complète pour comprendre, maintenir et étendre ce prototype WebSocket.
